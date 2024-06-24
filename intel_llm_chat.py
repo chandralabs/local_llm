@@ -20,16 +20,16 @@ CACHE_DIR = os.path.abspath("./LLM_RAG_Bot/models")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Available models
-models = {
+default_models = {
     "Qwen 8B": "Qwen/Qwen-1_8B-Chat",
-    "Meta LLaMA3 8B": "meta-llama/Meta-Llama-3-8B-Instruct",
-    "Meta LLaMA3 70B": "meta-llama/Meta-Llama-3-70B-Instruct",
     "Microsoft Phi-3 mini 4K": "microsoft/Phi-3-mini-4k-instruct",
     "Microsoft Phi-3 mini 128K": "microsoft/Phi-3-mini-128k-instruct",
     "Microsoft Phi-3 small 8K": "microsoft/Phi-3-small-8k-instruct",
     "Microsoft Phi-3 small 128K": "microsoft/Phi-3-small-128k-instruct",
     "Google Gemma": "google/gemma-7b",
-    "Mistral": "mistral/mistral-7b"
+    "Mistral": "mistral/mistral-7b",
+    "Meta LLaMA3 8B": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "Meta LLaMA3 70B": "meta-llama/Meta-Llama-3-70B-Instruct"
 }
 
 # Check if the model size is less than or equal to the system RAM size
@@ -150,8 +150,14 @@ def perform_inference(model, tokenizer, prompt, max_new_tokens=512):
 with st.sidebar:
     st.header("Model Configuration")
     
-    model_name = st.selectbox("Select a model:", list(models.keys()))
-    model_id = models[model_name]
+    model_name = st.selectbox("Select a model:", list(default_models.keys()) + ["Custom Model"])
+    if model_name == "Custom Model":
+        model_id = st.text_input("Enter custom model ID (from Hugging Face):")
+        hf_token = st.text_input("Enter your Hugging Face access token (if needed):", type="password")
+    else:
+        model_id = default_models[model_name]
+        hf_token = ""
+
     model_path = os.path.join(CACHE_DIR, model_name.replace("/", "_"))
     
     if os.path.exists(model_path):
@@ -169,7 +175,6 @@ with st.sidebar:
                     st.error('Failed to load the model.')
     else:
         st.write("Model not found locally.")
-        hf_token = st.text_input("Enter your Hugging Face access token to download the model", type="password")
         # Button to download and load the model
         if st.button('Download and Load Model'):
             with st.spinner('Downloading and loading the model...'):

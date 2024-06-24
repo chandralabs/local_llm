@@ -80,16 +80,24 @@ if !errorlevel! neq 0 (
         exit /b 1
     )
     del Miniforge3-Windows-x86_64.exe
+
+    :: Ask for Miniforge installation path
+    set /p MINIFORGE_PATH="Enter the path where Miniforge is installed: "
+    set "PATH=%MINIFORGE_PATH%;%PATH%"
+) else (
+    where miniforge > temp_miniforge_path.txt
+    set /p MINIFORGE_PATH=<temp_miniforge_path.txt
+    del temp_miniforge_path.txt
 )
 
 :: Create and activate Conda environment
 echo Creating and activating Conda environment...
-call conda create -n intel_gpu_llm python=3.11 libuv -y
+call "%MINIFORGE_PATH%\Scripts\conda.exe" create -n intel_gpu_llm python=3.11 libuv -y
 if !errorlevel! neq 0 (
     echo Failed to create Conda environment. Exiting...
     exit /b 1
 )
-call conda activate intel_gpu_llm
+call "%MINIFORGE_PATH%\Scripts\activate" intel_gpu_llm
 if !errorlevel! neq 0 (
     echo Failed to activate Conda environment. Exiting...
     exit /b 1
@@ -98,6 +106,22 @@ if !errorlevel! neq 0 (
 :: Install ipex-llm
 echo Installing ipex-llm...
 pip install --pre --upgrade ipex-llm[xpu] --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
+if !errorlevel! neq 0 (
+    echo Failed to install ipex-llm. Exiting...
+    exit /b 1
+)
+
+:: Install tiktoken
+echo Installing tiktoken...
+pip install tiktoken transformers_stream_generator einops
+if !errorlevel! neq 0 (
+    echo Failed to install tiktoken. Exiting...
+    exit /b 1
+)
+
+:: Install Streamlit
+echo Installing Streamlit...
+pip install streamlit
 if !errorlevel! neq 0 (
     echo Failed to install ipex-llm. Exiting...
     exit /b 1
@@ -113,13 +137,6 @@ if "%GPU_TYPE%"=="Intel dGPU" (
     set "BIGDL_LLM_XMX_DISABLED=1"
 )
 
-:: Install additional packages
-echo Installing additional packages...
-pip install tiktoken transformers_stream_generator einops intel-extension-for-pytorch HfApi huggingface_hub trl streamlit torch torchvision --upgrade transformers
-if !errorlevel! neq 0 (
-    echo Failed to install additional packages. Exiting...
-    exit /b 1
-)
 
 :: Ask the user for the path to the Streamlit application
 set /p STREAMLIT_APP_PATH="Enter the path to the Streamlit application (leave empty to use default: %ORIGINAL_PATH%\intel_llm_chat.py): "
@@ -155,7 +172,7 @@ if /i "%CONFIRM_GPU%"=="no" (
 
 set /p CONDA_PATH="Enter the path to your Miniforge installation (leave empty to use default): "
 if "%CONDA_PATH%"=="" (
-    set "CONDA_PATH=%MINICONDA_PATH%"
+    set "CONDA_PATH=%MINIFORGE_PATH%"
 )
 
 set /p CONDA_ENV="Enter the name of your Conda environment (leave empty to use default: %DEFAULT_CONDA_ENV%): "
@@ -164,7 +181,7 @@ if "%CONDA_ENV%"=="" (
 )
 
 cd %CONDA_PATH%
-call conda activate %CONDA_ENV%
+call "%CONDA_PATH%\Scripts\activate" %CONDA_ENV%
 if !errorlevel! neq 0 (
     echo Failed to activate Conda environment. Exiting...
     exit /b 1
@@ -191,3 +208,4 @@ cd %ORIGINAL_PATH%
 echo All tasks completed successfully.
 endlocal
 pause
+exit /b 0
